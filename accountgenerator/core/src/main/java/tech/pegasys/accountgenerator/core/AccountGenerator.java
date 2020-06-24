@@ -75,7 +75,7 @@ public final class AccountGenerator {
     @Override
     public void run() {
       keyGeneratorProvider.shutdown();
-      System.out.println("Shutting done AccountGenerator");
+      System.out.println("Shutting down AccountGenerator");
     }
   }
 
