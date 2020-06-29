@@ -55,7 +55,7 @@ public class GenerateAccountHandler implements JsonRpcRequestHandler {
       responder.create(
           context.request(),
           HttpResponseStatus.INTERNAL_SERVER_ERROR.code(),
-          new JsonRpcErrorResponse(JsonRpcError.FAILED_TO_INITIALIZE_PROVIDER));
+          new JsonRpcErrorResponse(JsonRpcError.FAILED_TO_GENERATE_ACCOUNT));
       return;
     }
     if (address == null) {
@@ -78,7 +78,6 @@ public class GenerateAccountHandler implements JsonRpcRequestHandler {
           context.request(),
           HttpResponseStatus.INTERNAL_SERVER_ERROR.code(),
           new JsonRpcErrorResponse(JsonRpcError.FAILED_TO_GENERATE_TOML_FILE));
-      return;
     }
   }
 }
