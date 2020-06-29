@@ -95,11 +95,11 @@ allprojects {
 
   repositories {
     jcenter()
-    mavenLocal()
     mavenCentral()
   }
 
   dependencies {
+    compile fileTree(dir: "${rootDir}/libs", include: "*.jar")
     errorprone("com.google.errorprone:error_prone_core")
   }
 
