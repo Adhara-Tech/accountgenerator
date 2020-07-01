@@ -310,6 +310,7 @@ startScripts {
 dependencies {
   implementation project(':accountgenerator:app')
   errorprone 'com.google.errorprone:error_prone_core'
+  runtime fileTree(dir: 'libs', include: '*.jar')
 }
 
 distributions {
