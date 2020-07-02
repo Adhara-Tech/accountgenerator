@@ -316,6 +316,7 @@ dependencies {
 distributions {
   main {
     contents {
+      from("./accountgenerator/generator/cavium/src/main/resources/sas.sh") { into "scripts" }
       from("./LICENSE") { into "." }
       from("build/reports/license/license-dependency.html") { into "." }
       from("./docs/GettingStartedBinaries.md") { into "." }
