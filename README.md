@@ -42,3 +42,5 @@ Generate a new account
 ```
 curl -w "\n" -X POST --data '{"jsonrpc":"2.0","method":"eth_generateAccount","params":[],"id":1}' http://127.0.0.1:8543
 ```
+
+
