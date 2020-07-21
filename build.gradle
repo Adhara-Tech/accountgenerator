@@ -25,10 +25,15 @@ plugins {
   id 'net.researchgate.release' version '2.8.1'
 }
 
+String projectName = "AccountGenerator"
+String repositoryName = projectName.toLowerCase()
+String projectHome = projectName.toUpperCase() + "_HOME"
+
 if (!JavaVersion.current().java11Compatible) {
   throw new GradleException("Java 11 or later is required to build AccountGenerator.\n" +
   "  Detected version ${JavaVersion.current()}")
 }
+def dockerRepo = "adharaprojects"
 
 group = 'tech.pegasys.accountgenerator'
 
@@ -345,6 +350,89 @@ distZip {
   }
 }
 
+
+// rename the top level dir from <reponame>-<version> to <reponame> and this makes it really
+// simple for use in docker
+tasks.register("dockerDistUntar") {
+  dependsOn distTar
+  dependsOn distZip
+  def dockerBuildDir = "build/docker-" + repositoryName + "/"
+  def distTarFile = distTar.outputs.files.singleFile
+  def distTarFileName = distTar.outputs.files.singleFile.name.replace(".tar.gz", "")
+
+  doFirst {
+    new File(dockerBuildDir).mkdir()
+    copy {
+      from tarTree(distTarFile)
+      into(dockerBuildDir)
+    }
+    file("${dockerBuildDir}/${distTarFileName}").renameTo("${dockerBuildDir}/" + repositoryName)
+  }
+}
+
+task distDocker(type: Exec) {
+  def tagSuffix = project.hasProperty("dockerfile")? "-" + dockerfile : ""
+  def dockerfile = project.hasProperty("dockerfile")? dockerfile + ".Dockerfile" : "Dockerfile"
+  dependsOn dockerDistUntar
+  def dockerBuildVersion = project.hasProperty('release.releaseVersion') ? project.property('release.releaseVersion') : "${rootProject.version}"
+  def imageName = dockerRepo + "/" + repositoryName
+  def image = project.hasProperty('release.releaseVersion') ? "${imageName}:" + project.property('release.releaseVersion')  + "${tagSuffix}": "${imageName}:${project.version}${tagSuffix}"
+  def dockerBuildDir = "build/docker-" + repositoryName + "/"
+  workingDir "${dockerBuildDir}"
+
+  doFirst {
+    copy {
+      from file("${projectDir}/docker/" + dockerfile)
+      into(workingDir)
+    }
+    copy {
+      from file("${projectDir}/docker/cloudhsm-entrypoint.sh")
+      into(workingDir)
+    }
+  }
+
+  executable "sh"
+  args "-c", "docker build -f ${dockerfile} --build-arg BUILD_DATE=${buildTime()} --build-arg VERSION=${dockerBuildVersion} --build-arg VCS_REF=${getCheckedOutGitCommitHash()} -t ${image} ."
+}
+
+task testDocker(type: Exec) {
+  dependsOn distDocker
+  def tagSuffix = project.hasProperty("dockerfile")? "-" + dockerfile : ""
+  def dockerReportsDir = "docker/reports/"
+  def imageName = dockerRepo + "/" + repositoryName
+  def image = project.hasProperty('release.releaseVersion') ? "${imageName}:" + project.property('release.releaseVersion')  + "${tagSuffix}": "${imageName}:${project.version}${tagSuffix}"
+  workingDir "docker"
+
+  doFirst {
+    new File(dockerReportsDir).mkdir()
+  }
+
+  executable "sh"
+  args "-c", "bash test.sh ${image}"
+}
+
+task dockerUpload(type: Exec) {
+  dependsOn distDocker
+  def tagSuffix = project.hasProperty("dockerfile")? "-" + dockerfile : ""
+  def imageName = dockerRepo + "/" + repositoryName
+  def image = project.hasProperty('release.releaseVersion') ? "${imageName}:" + project.property('release.releaseVersion')  + "${tagSuffix}": "${imageName}:${project.version}${tagSuffix}"
+  def cmd = "docker push '${image}'"
+  def additionalTags = []
+
+  if (project.hasProperty('branch') && project.property('branch') == 'master') {
+    additionalTags.add("develop${tagSuffix}")
+  }
+
+  if (!(version ==~ /.*-SNAPSHOT/)) {
+    additionalTags.add("latest${tagSuffix}")
+    additionalTags.add(version.split(/\./)[0..1].join('.') + "${tagSuffix}")
+  }
+
+  additionalTags.each { tag -> cmd += " && docker tag '${image}' '${imageName}:${tag.trim()}' && docker push '${imageName}:${tag.trim()}'" }
+  executable "sh"
+  args "-c", cmd
+}
+
 task jacocoRootReport(type: org.gradle.testing.jacoco.tasks.JacocoReport) {
   additionalSourceDirs.from files(subprojects.sourceSets.main.allSource.srcDirs)
   sourceDirectories.from files(subprojects.sourceSets.main.allSource.srcDirs)
@@ -377,6 +465,28 @@ def buildTime() {
 def calculateVersion() {
   String version = rootProject.version
   return version
+}
+
+def getCheckedOutGitCommitHash() {
+  def gitFolder = "$projectDir/.git/"
+  if (!file(gitFolder).isDirectory()) {
+    // We are in a submodule.  The file's contents are `gitdir: <gitFolder>\n`.
+    // Read the file, cut off the front, and trim the whitespace.
+    gitFolder = file(gitFolder).text.substring(8).trim() + "/"
+  }
+  def takeFromHash = 8
+  /*
+   * '.git/HEAD' contains either
+   *      in case of detached head: the currently checked out commit hash
+   *      otherwise: a reference to a file containing the current commit hash
+   */
+  def head = new File(gitFolder + "HEAD").text.split(":") // .git/HEAD
+  def isCommit = head.length == 1 // e5a7c79edabbf7dd39888442df081b1c9d8e88fd
+
+  if (isCommit) return head[0].trim().take(takeFromHash) // e5a7c79edabb
+
+  def refHead = new File(gitFolder + head[1].trim()) // .git/refs/heads/master
+  refHead.text.trim().take takeFromHash
 }
 
 release {
