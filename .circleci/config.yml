@@ -209,19 +209,6 @@ jobs:
             ./gradlew --no-daemon --parallel "-Pbranch=${CIRCLE_BRANCH}" dockerUpload -Pdockerfile=cloudhsm
       #- notify
 
-  test_pull_request:
-    executor: executor_med
-    steps:
-      - run: echo "Placeholder"
-  test_stable_branch:
-    executor: executor_med
-    steps:
-      - run: echo "Placeholder"
-  publish_stable_branch:
-    executor: executor_med
-    steps:
-      - run: echo "Placeholder"
-
 # #################
 # Workflow Definitions
 # #################
@@ -235,38 +222,34 @@ workflows:
             #branches:
               #only:
                 #- master
-  default-workflow:
+  default:
     jobs:
-      - build_docker
-      - publish_docker
       # Tests pull requests
-      - test_pull_request:
-          requires:
-            - build_docker
+      - build_docker:
           filters:
             branches:
               ignore:
                 - master
                 - /^release-.*/
+  publish:
+    jobs:
       # Tests stable branches
-      - test_stable_branch:
-          requires:
-            - build_docker
+      - build_docker:
           filters:
             branches:
               only:
                 - master
                 - /^release-.*/
       # Publish stable branches
-      - publish_stable_branch:
+      - publish_docker:
           requires:
-            - test_stable_branch
-            - publish_docker
+            - build_docker
           filters:
             branches:
               only:
                 - master
                 - /^release-.*/
+
 # TODO remove
 #      - build
 #      #- acceptanceTests:
