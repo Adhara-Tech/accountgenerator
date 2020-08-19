@@ -23,9 +23,9 @@ executors:
       JAVA_TOOL_OPTIONS: -Xmx4096m
       GRADLE_OPTS: -Dorg.gradle.daemon=false -Dorg.gradle.parallel=true -Dorg.gradle.workers.max=4 -Xmx4096m
 
-  executor_machine: # 2cpu , 8G ram
+  executor_machine: # 2cpu, 8G ram
     machine:
-      image: ubuntu-1604:201903-01 #Ubuntu 16.04, docker 18.09.3, docker-compose 1.23.1
+      image: ubuntu-1604:201903-01 # Ubuntu 16.04, docker 18.09.3, docker-compose 1.23.1
       docker_layer_caching: true
     working_directory: ~/project
     environment:
@@ -93,7 +93,10 @@ commands:
       - slack/status:
           fail_only: true
           only_for_branches: 'master'
-          
+
+# #################
+# Jobs Definitions
+# #################
 jobs:
   build:
     executor: executor_med
@@ -113,7 +116,7 @@ jobs:
           no_output_timeout: 20m
           command: |
             ./gradlew --no-daemon --parallel integrationTest --info
-      #- notify      
+      #- notify
       - capture_test_results
       - capture_test_reports
       - save_cache:
@@ -149,7 +152,7 @@ jobs:
 #      - capture_test_results
 #      - capture_test_reports
 
-  buildDocker:
+  build_docker:
     executor: executor_med
     steps:
       - prepare
@@ -186,8 +189,8 @@ jobs:
           command: |
             ./gradlew --no-daemon --parallel bintrayUpload
       #- notify
-      
-  publishDocker:
+
+  publish_docker:
     executor: executor_med
     steps:
       - prepare
@@ -205,7 +208,23 @@ jobs:
             docker login --username "${DOCKER_USER}" --password "${DOCKER_PASSWORD}"
             ./gradlew --no-daemon --parallel "-Pbranch=${CIRCLE_BRANCH}" dockerUpload -Pdockerfile=cloudhsm
       #- notify
-      
+
+  test_pull_request:
+    executor: executor_med
+    steps:
+      - run: echo "Placeholder"
+  test_stable_branch:
+    executor: executor_med
+    steps:
+      - run: echo "Placeholder"
+  publish_stable_branch:
+    executor: executor_med
+    steps:
+      - run: echo "Placeholder"
+
+# #################
+# Workflow Definitions
+# #################
 workflows:
   version: 2
   #nightly:
@@ -216,37 +235,63 @@ workflows:
             #branches:
               #only:
                 #- master
-    #jobs:
-      #- build
-      #- acceptanceTests:
-          #requires:
-            #- build
-  default:
+  default-workflow:
     jobs:
-      - build
-      #- acceptanceTests:
-      #   requires:
-      #     - build
-      - buildDocker:
+      - build_docker
+      - publish_docker
+      # Tests pull requests
+      - test_pull_request:
           requires:
-            - build
-      # TODO:  <02-07-20, fllaca> # Adhara doesn't need to publish mvn packages for now
-      #- publish:
-          #filters:
-            #branches:
-              #only:
-                #- master
-                #- /^release-.*/
-          #requires:
-            #- build
-            ##- acceptanceTests
-      - publishDocker:
+            - build_docker
+          filters:
+            branches:
+              ignore:
+                - master
+                - /^release-.*/
+      # Tests stable branches
+      - test_stable_branch:
+          requires:
+            - build_docker
           filters:
             branches:
               only:
                 - master
                 - /^release-.*/
+      # Publish stable branches
+      - publish_stable_branch:
           requires:
-            - build
-            #- acceptanceTests
-            - buildDocker
+            - test_stable_branch
+            - publish_docker
+          filters:
+            branches:
+              only:
+                - master
+                - /^release-.*/
+# TODO remove
+#      - build
+#      #- acceptanceTests:
+#      #   requires:
+#      #     - build
+#      - build_docker:
+#          requires:
+#            - build
+#      # TODO:  <02-07-20, fllaca> # Adhara doesn't need to publish mvn packages for now
+#      #- publish:
+#          #filters:
+#            #branches:
+#              #only:
+#                #- master
+#                #- /^release-.*/
+#          #requires:
+#            #- build
+#            ##- acceptanceTests
+#      - publish_docker:
+#          filters:
+#            branches:
+#              only:
+#                - master
+#                - /^release-.*/
+#          requires:
+#            - build
+#            #- acceptanceTests
+#            - build_docker
