@@ -51,8 +51,8 @@ public class CaviumKeyStoreGenerator extends HSMKeyStoreGenerator {
     List<String> list =
         Arrays.asList(
             sas,
-            System.getenv("HSM_USER"),
-            System.getenv("HSM_PASSWORD"),
+            System.getProperty("HSM_USER"),
+            System.getProperty("HSM_PASSWORD"),
             Long.toString(privateHandle),
             Long.toString(publicHandle),
             address);
