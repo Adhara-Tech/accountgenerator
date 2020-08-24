@@ -395,21 +395,21 @@ task distDocker(type: Exec) {
   args "-c", "docker build -f ${dockerfile} --build-arg BUILD_DATE=${buildTime()} --build-arg VERSION=${dockerBuildVersion} --build-arg VCS_REF=${getCheckedOutGitCommitHash()} -t ${image} ."
 }
 
-task testDocker(type: Exec) {
-  dependsOn distDocker
-  def tagSuffix = project.hasProperty("dockerfile")? "-" + dockerfile : ""
-  def dockerReportsDir = "docker/reports/"
-  def imageName = dockerRepo + "/" + repositoryName
-  def image = project.hasProperty('release.releaseVersion') ? "${imageName}:" + project.property('release.releaseVersion')  + "${tagSuffix}": "${imageName}:${project.version}${tagSuffix}"
-  workingDir "docker"
-
-  doFirst {
-    new File(dockerReportsDir).mkdir()
-  }
-
-  executable "sh"
-  args "-c", "bash test.sh ${image}"
-}
+//task testDocker(type: Exec) {
+//  dependsOn distDocker
+//  def tagSuffix = project.hasProperty("dockerfile")? "-" + dockerfile : ""
+//  def dockerReportsDir = "docker/reports/"
+//  def imageName = dockerRepo + "/" + repositoryName
+//  def image = project.hasProperty('release.releaseVersion') ? "${imageName}:" + project.property('release.releaseVersion')  + "${tagSuffix}": "${imageName}:${project.version}${tagSuffix}"
+//  workingDir "docker"
+//
+//  doFirst {
+//    new File(dockerReportsDir).mkdir()
+//  }
+//
+//  executable "sh"
+//  args "-c", "bash test.sh ${image}"
+//}
 
 task dockerUpload(type: Exec) {
   dependsOn distDocker

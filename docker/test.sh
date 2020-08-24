@@ -1,12 +1,22 @@
 #!/bin/bash
+
 set -eo pipefail
 
-docker run --rm --name accountgenerator \
+DOCKER_IMAGE=$1
+DOCKER_TEST_IMAGE=accountgenerator
+
+# create test docker image that includes the test key file and password files
+TEST_CONTAINER_ID=$(docker create ${DOCKER_IMAGE})
+docker cp ./pwd ${TEST_CONTAINER_ID}:/tmp/test_password
+docker commit ${TEST_CONTAINER_ID} ${DOCKER_TEST_IMAGE}
+
+docker run --rm --name ${DOCKER_TEST_IMAGE} \
   -v $PWD/pwd:/etc/accountgenerator/keyfiles/pwd \
   -p 7545:7545 \
-  adharaprojects/accountgenerator:1.0.0-ADHARA-SNAPSHOT \
+  ${DOCKER_IMAGE} \
   --http-listen-port=7545 \
   --http-listen-host="0.0.0.0" \
   --directory="/etc/accountgenerator/keyfiles/" \
   file-based-account-generator \
-  --password-file="/etc/accountgenerator/keyfiles/pwd" \
+  --password-file="/etc/accountgenerator/keyfiles/pwd"
+
