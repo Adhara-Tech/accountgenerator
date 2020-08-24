@@ -130,28 +130,6 @@ jobs:
           paths:
             - ./
 
-#  acceptanceTests:
-#    executor: executor_machine
-#    steps:
-#      - prepare
-#      - run:
-#          name: Install Packages - Java 11
-#          command: |
-#            sudo rm  /etc/apt/sources.list.d/google-chrome.list*
-#            sudo rm  /etc/apt/sources.list.d/heroku.list*
-#            sudo add-apt-repository -y ppa:openjdk-r/ppa
-#            sudo apt update
-#            sudo apt install -y openjdk-11-jdk
-#            sudo update-java-alternatives -s java-1.11.0-openjdk-amd64
-#      - run:
-#          name: Acceptance Test
-#          no_output_timeout: 20m
-#          command: |
-#            ./gradlew --no-daemon --parallel acceptanceTest
-#      - notify            
-#      - capture_test_results
-#      - capture_test_reports
-
   build_docker:
     executor: executor_med
     steps:
@@ -245,31 +223,3 @@ workflows:
                 - master
                 - /^release-.*/
 
-# TODO remove
-#      - build
-#      #- acceptanceTests:
-#      #   requires:
-#      #     - build
-#      - build_docker:
-#          requires:
-#            - build
-#      # TODO:  <02-07-20, fllaca> # Adhara doesn't need to publish mvn packages for now
-#      #- publish:
-#          #filters:
-#            #branches:
-#              #only:
-#                #- master
-#                #- /^release-.*/
-#          #requires:
-#            #- build
-#            ##- acceptanceTests
-#      - publish_docker:
-#          filters:
-#            branches:
-#              only:
-#                - master
-#                - /^release-.*/
-#          requires:
-#            - build
-#            #- acceptanceTests
-#            - build_docker
