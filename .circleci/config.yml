@@ -168,11 +168,6 @@ jobs:
           command: |
             ./gradlew --no-daemon distDocker
       - run:
-          name: test image
-          command: |
-            mkdir -p docker/reports
-            ./gradlew --no-daemon testDocker
-      - run:
           name: build image - cloudhsm
           command: |
             ./gradlew --no-daemon distDocker -Pdockerfile=cloudhsm
