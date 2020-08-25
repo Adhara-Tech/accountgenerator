@@ -58,9 +58,6 @@ public class CaviumKeyStoreGenerator extends HSMKeyStoreGenerator {
             address);
     String result = runCommand(list);
     LOG.info(result);
-    //    X509Certificate cert =
-    //        generateCertificate(keyPair, 365, algo, "CN=AccountGenerator, L=CT, C=ZA", p);
-    //    ks.setCertificateEntry(address.replaceFirst("0x", "0c"), cert);
     return address;
   }
 

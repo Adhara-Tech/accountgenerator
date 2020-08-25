@@ -13,19 +13,11 @@
 package tech.pegasys.accountgenerator.generator.cavium;
 
 import java.io.IOException;
-import java.lang.reflect.Field;
-import java.lang.reflect.InvocationTargetException;
-import java.lang.reflect.Method;
 import java.security.KeyStore;
 import java.security.NoSuchAlgorithmException;
 import java.security.Security;
 import java.security.cert.CertificateException;
-import java.util.Collections;
-import java.util.ConcurrentModificationException;
 import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.stream.Stream;
 
 import com.google.common.base.Splitter;
 
