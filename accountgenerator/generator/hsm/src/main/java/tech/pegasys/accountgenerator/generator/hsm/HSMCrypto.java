@@ -158,16 +158,7 @@ public class HSMCrypto {
     byte[] ecParams =
         new byte[] {
           (byte) 0x06, (byte) 0x05, (byte) 0x2B, (byte) 0x81, (byte) 0x04, (byte) 0x00, (byte) 0x0A
-        }; // secp256k1
-    //    byte[] ecParams = null;
-    //    ASN1ObjectIdentifier asn1 = SECNamedCurves.getOID(CURVE);
-    //    try {
-    //      ecParams = asn1.getEncoded();
-    //    } catch (IOException ex) {
-    //      LOG.error(ex);
-    //      throw new HSMCryptoException("Failed get EC parameters.", ex);
-    //    }
-    //    LOG.info(Arrays.toString(ecParams));
+        };
 
     ECPrivateKey privateKeyTemplate = new ECPrivateKey();
     privateKeyTemplate.getToken().setBooleanValue(Boolean.TRUE);
@@ -220,51 +211,7 @@ public class HSMCrypto {
       closeSession(session);
     }
   }
-  /*
-    // sign returns the transposed signature of the given hash
-    public Signature sign(long slotIndex, byte[] hash, String address) throws HSMCryptoException {
-      Session session = openSession(slotIndex);
-      byte[] signature;
-      BigInteger publicKey;
-      try {
-        ECPrivateKey privateKeyHandle = getPrivateKeyHandle(session, address);
-        if (privateKeyHandle == null)
-          throw new RuntimeException("Failed to retrieve private key handle.");
-        ECPublicKey publicKeyHandle = getPublicKeyHandle(session, address);
-        if (publicKeyHandle == null)
-          throw new RuntimeException("Failed to retrieve public key handle.");
 
-        byte[] publicKeyBytes = getPublicKey(publicKeyHandle);
-        publicKey = Sign.publicFromPoint(publicKeyBytes);
-
-        session.signInit(Mechanism.get(PKCS11Constants.CKM_ECDSA), privateKeyHandle);
-        signature = session.sign(hash);
-      } catch (Exception ex) {
-        LOG.error(ex);
-        throw new HSMCryptoException("Failed to produce a valid signature for the hash.", ex);
-      } finally {
-        closeSession(session);
-      }
-
-      ECDSASignature canonicalSignature = null;
-      try {
-        canonicalSignature = transposeSignatureToLowS(signature);
-      } catch (Exception ex) {
-        LOG.error(ex);
-        throw new HSMCryptoException("Failed to transpose signature.");
-      }
-
-      final int recId = recoverKeyIndex(canonicalSignature, hash, publicKey);
-      if (recId == -1) {
-        throw new HSMCryptoException(
-            "Failed to construct a recoverable key. Are your credentials valid?");
-      }
-
-      final int headerByte = recId + 27;
-      return new Signature(
-          BigInteger.valueOf(headerByte), canonicalSignature.r, canonicalSignature.s);
-    }
-  */
   // getAddresses returns all the addresses on the wallet
   public List<String> getAddresses(long slotIndex) {
     Session session = openSession(slotIndex);
@@ -333,18 +280,7 @@ public class HSMCrypto {
       throw new HSMCryptoException("Failed to close session.", ex);
     }
   }
-  /*
-    // transposeSignatureToLowS ensures that the signature has a low S value as Ethereum requires.
-    private ECDSASignature transposeSignatureToLowS(byte[] signature) {
-      byte[] r = Arrays.copyOfRange(signature, 0, signature.length / 2);
-      BigInteger R = new BigInteger(1, r);
-      byte[] s = Arrays.copyOfRange(signature, signature.length / 2, signature.length);
-      BigInteger S = new BigInteger(1, s);
-      final ECDSASignature initialSignature = new ECDSASignature(R, S);
-      final ECDSASignature canonicalSignature = initialSignature.toCanonicalised();
-      return canonicalSignature;
-    }
-  */
+
   // timeToBytes returns the current unix time as a byte array
   private byte[] timeToBytes() {
     long l = Instant.now().getEpochSecond();
@@ -389,18 +325,7 @@ public class HSMCrypto {
     obj.getLabel().setCharArrayValue(label.toCharArray());
     session.setAttributeValues(objectHandle, obj);
   }
-  /*
-    // recoverKeyIndex works backwards to figure out the recId needed to recover the signature
-    private int recoverKeyIndex(final ECDSASignature sig, final byte[] hash, BigInteger publicKey) {
-      for (int i = 0; i < 4; i++) {
-        final BigInteger k = Sign.recoverFromSignature(i, sig, hash);
-        if (k != null && k.equals(publicKey)) {
-          return i;
-        }
-      }
-      return -1;
-    }
-  */
+
   // findObject returns the first match of the given template
   private PKCS11Object findObject(Session session, PKCS11Object template) throws TokenException {
     session.findObjectsInit(template);
@@ -420,39 +345,6 @@ public class HSMCrypto {
     PKCS11Object[] objects = session.findObjects(1000);
     session.findObjectsFinal();
     result.addAll(Arrays.asList(objects));
-    return result;
-  }
-  /*
-    // getPrivateKeyHandle returns the private key handle for the given address
-    private ECPrivateKey getPrivateKeyHandle(Session session, String address) throws TokenException {
-      PrivateKey key = new PrivateKey();
-      key.getLabel().setCharArrayValue(address.toCharArray());
-      return (ECPrivateKey) findObject(session, key);
-    }
-
-    // getPublicKeyHandle returns the public key handle for the given address
-    private ECPublicKey getPublicKeyHandle(Session session, String address) throws TokenException {
-      PublicKey key = new PublicKey();
-      key.getLabel().setCharArrayValue(address.toCharArray());
-      return (ECPublicKey) findObject(session, key);
-    }
-  */
-
-  public List<PKCS11Object> Test(long slotIndex) throws TokenException {
-
-    Session session = openSession(slotIndex);
-    List<PKCS11Object> result = new ArrayList<>();
-    try {
-      session.findObjectsInit(new ECPublicKey());
-      PKCS11Object[] objects = session.findObjects(1000);
-      session.findObjectsFinal();
-      result.addAll(Arrays.asList(objects));
-    } catch (Exception ex) {
-      LOG.error(ex);
-      throw new HSMCryptoException("Failed to determine if slot contains address.", ex);
-    } finally {
-      closeSession(session);
-    }
     return result;
   }
 }

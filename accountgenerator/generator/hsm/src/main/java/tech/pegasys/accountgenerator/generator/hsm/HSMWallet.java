@@ -67,10 +67,4 @@ public class HSMWallet {
   public String generate() {
     return crypto.generateECKeyPair(slotIndex);
   }
-
-  /*
-  public Signature sign(byte[] hash, String address) {
-    return crypto.sign(slotIndex, hash, address);
-  }
-  */
 }
