@@ -80,7 +80,7 @@ public class Runner {
         .handler(BodyHandler.create())
         .handler(ResponseContentTypeHandler.create())
         .failureHandler(new JsonRpcErrorHandler(new HttpResponseFactory(), jsonDecoder))
-        .handler(new JsonRpcHandler(responseFactory, createRequestMapper(), jsonDecoder));
+        .blockingHandler(new JsonRpcHandler(responseFactory, createRequestMapper(), jsonDecoder));
 
     // Handler for UpCheck endpoint
     router
