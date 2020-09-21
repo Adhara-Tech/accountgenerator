@@ -33,7 +33,7 @@ if (!JavaVersion.current().java11Compatible) {
   throw new GradleException("Java 11 or later is required to build AccountGenerator.\n" +
   "  Detected version ${JavaVersion.current()}")
 }
-def dockerRepo = "adharaprojects"
+def dockerRepo = "adharatech"
 
 group = 'tech.pegasys.accountgenerator'
 
