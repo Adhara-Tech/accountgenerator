@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -78,7 +78,7 @@ public class HSMKeyStoreGenerator implements KeyGenerator {
     String address = null;
     try {
       address = generateKey(p, ks, ALGORITHM, CURVE);
-      LOG.debug("Generated new key with address: " + address);
+      LOG.info("Generated new key with address: " + address);
     } catch (Exception ex) {
       LOG.trace(ex);
     }

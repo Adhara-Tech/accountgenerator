@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,7 +13,7 @@
 
 dependencyManagement {
   dependencies {
-    dependency 'com.github.docker-java:docker-java:3.1.1'
+    dependency 'com.github.docker-java:docker-java:3.2.0'
 
     dependency 'com.google.errorprone:error_prone_annotation:2.3.4'
     dependency 'com.google.errorprone:error_prone_check_api:2.3.4'
@@ -24,13 +24,11 @@ dependencyManagement {
 
     dependency 'com.microsoft.aad:adal4j:0.0.2'
 
-    dependency 'com.microsoft.azure:azure-keyvault:1.2.2'
-
     dependency 'com.squareup.okhttp3:okhttp:4.3.1'
 
     dependency 'commons-cli:commons-cli:1.4'
 
-    dependency 'info.picocli:picocli:4.2.0'
+    dependency 'info.picocli:picocli:4.5.0'
 
     dependency 'io.rest-assured:rest-assured:4.2.0'
 
@@ -69,7 +67,6 @@ dependencyManagement {
     dependency 'org.mockito:mockito-inline:3.2.4'
     dependency 'org.mockito:mockito-junit-jupiter:3.2.4'
 
-    dependency 'org.web3j:besu:4.5.14'
     dependency 'org.web3j:core:4.5.14'
     dependency 'org.web3j:crypto:4.5.14'
   }
