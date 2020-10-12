@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -12,16 +12,24 @@
  */
 package tech.pegasys.accountgenerator.generator.cavium;
 
+import static tech.pegasys.accountgenerator.DefaultCommandValues.MANDATORY_PATH_FORMAT_HELP;
+import static tech.pegasys.accountgenerator.RequiredOptionsUtil.checkIfRequiredOptionsAreInitialized;
+
 import tech.pegasys.accountgenerator.AccountGeneratorSubCommand;
 import tech.pegasys.accountgenerator.KeyGeneratorInitializationException;
+import tech.pegasys.accountgenerator.TomlTableAdapter;
 import tech.pegasys.accountgenerator.core.KeyGeneratorProvider;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.google.common.base.MoreObjects;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.tuweni.toml.TomlParseResult;
+import org.apache.tuweni.toml.TomlTable;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
 
 /** HSM-based authentication related sub-command */
@@ -32,6 +40,8 @@ import picocli.CommandLine.Spec;
 public class CaviumSubCommand extends AccountGeneratorSubCommand {
 
   public static final String COMMAND_NAME = "cavium-account-generator";
+  private static final Logger LOG = LogManager.getLogger();
+  private CaviumConfig caviumConfig;
 
   public CaviumSubCommand() {}
 
@@ -39,33 +49,35 @@ public class CaviumSubCommand extends AccountGeneratorSubCommand {
   @Spec
   private CommandLine.Model.CommandSpec spec;
 
-  @Option(
-      names = {"-l", "--library"},
-      description = "The HSM PKCS11 library used to sign transactions.",
-      paramLabel = "<LIBRARY_PATH>",
+  @CommandLine.Option(
+      names = {"-c", "--config"},
+      description = "The path to a config file to initialize generator provider",
+      paramLabel = MANDATORY_PATH_FORMAT_HELP,
+      arity = "1",
       required = true)
-  private Path libraryPath;
-
-  @Option(
-      names = {"-p", "--slot-pin"},
-      description = "The crypto user pin of the HSM slot used to sign transactions.",
-      paramLabel = "<SLOT_PIN>",
-      required = true)
-  private String slotPin;
-
-  @Option(
-      names = {"-s", "--sas"},
-      description = "The script used to set attributes.",
-      paramLabel = "<LIBRARY_PATH>",
-      required = true)
-  private Path sasPath;
+  private Path config;
 
   @Override
   public KeyGeneratorProvider createGeneratorFactory(Path directory)
       throws KeyGeneratorInitializationException {
-    final CaviumKeyStoreProvider provider =
-        new CaviumKeyStoreProvider(libraryPath.toString(), slotPin);
-    return new CaviumKeyStoreGeneratorFactory(provider, sasPath, directory);
+    Optional<TomlParseResult> result = loadConfig(config);
+    if (result.isPresent()) {
+      try {
+        caviumConfig = getCaviumConfigFrom(result.get());
+        final CaviumKeyStoreProvider provider = new CaviumKeyStoreProvider(caviumConfig);
+        provider.initialize();
+        return new CaviumKeyStoreGeneratorFactory(provider, caviumConfig.getSas(), directory);
+      } catch (final Exception e) {
+        LOG.error("Unable to initialize Cavium generator factory from config in " + config);
+      }
+    }
+    return null;
+  }
+
+  @Override
+  protected void validateArgs() throws KeyGeneratorInitializationException {
+    checkIfRequiredOptionsAreInitialized(this);
+    super.validateArgs();
   }
 
   @Override
@@ -73,11 +85,33 @@ public class CaviumSubCommand extends AccountGeneratorSubCommand {
     return COMMAND_NAME;
   }
 
+  public Path getConfig() {
+    return config;
+  }
+
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("library", libraryPath)
-        .add("sas", sasPath)
-        .toString();
+    if (caviumConfig != null) {
+      return MoreObjects.toStringHelper(this)
+          .add("config", config)
+          .add("library", caviumConfig.getLibrary())
+          .add("sas", caviumConfig.getSas())
+          .toString();
+    }
+    return "";
+  }
+
+  private static CaviumConfig getCaviumConfigFrom(TomlParseResult result) {
+    CaviumConfig.CaviumConfigBuilder builder = new CaviumConfig.CaviumConfigBuilder();
+    TomlTable caviumSignerTable = result.getTable("cavium-generator");
+    if (caviumSignerTable != null && !caviumSignerTable.isEmpty()) {
+      TomlTableAdapter table = new TomlTableAdapter(caviumSignerTable);
+      builder.withLibrary(table.getString("library"));
+      builder.withPin(table.getString("pin"));
+      builder.withSas(table.getString("sas"));
+      return builder.build();
+    } else {
+      return builder.fromEnvironmentVariables().build();
+    }
   }
 }

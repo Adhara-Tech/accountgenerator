@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -17,11 +17,13 @@ import static tech.pegasys.accountgenerator.DefaultCommandValues.MANDATORY_PATH_
 import static tech.pegasys.accountgenerator.DefaultCommandValues.MANDATORY_PORT_FORMAT_HELP;
 
 import tech.pegasys.accountgenerator.config.PicoCliTlsServerOptions;
+import tech.pegasys.accountgenerator.core.CorsAllowedOriginsProperty;
 import tech.pegasys.accountgenerator.core.config.Config;
 import tech.pegasys.accountgenerator.core.config.TlsOptions;
 
 import java.net.InetAddress;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Optional;
 
 import com.google.common.base.MoreObjects;
@@ -79,6 +81,13 @@ public class AccountGeneratorBaseCommand implements Config {
       arity = "1")
   private final Integer httpListenPort = 8545;
 
+  // A list of origins URLs that are accepted by the JsonRpcHttpServer (CORS)
+  @Option(
+      names = {"--http-cors-origins"},
+      description = "Comma separated origin domain URLs for CORS validation (default: none)")
+  private final CorsAllowedOriginsProperty rpcHttpCorsAllowedOrigins =
+      new CorsAllowedOriginsProperty();
+
   @Option(
       names = {"--directory", "-d"},
       description = "The path to a directory to store generated toml files",
@@ -110,6 +119,11 @@ public class AccountGeneratorBaseCommand implements Config {
   }
 
   @Override
+  public Collection<String> getCorsAllowedOrigins() {
+    return rpcHttpCorsAllowedOrigins;
+  }
+
+  @Override
   public Path getDirectory() {
     return directory;
   }
@@ -126,6 +140,7 @@ public class AccountGeneratorBaseCommand implements Config {
         .add("logLevel", logLevel)
         .add("httpListenHost", httpListenHost)
         .add("httpListenPort", httpListenPort)
+        .add("corsAllowedOrigins", rpcHttpCorsAllowedOrigins)
         .add("directory", dataPath)
         .toString();
   }

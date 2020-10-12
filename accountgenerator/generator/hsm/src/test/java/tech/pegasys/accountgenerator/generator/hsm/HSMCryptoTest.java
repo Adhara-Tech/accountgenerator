@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -39,7 +39,6 @@ public class HSMCryptoTest {
   @BeforeAll
   public static void beforeAll() {
     Properties p = new Properties();
-    // InputStream is = ClassLoader.getSystemResourceAsStream("cavium" + ".properties");
     InputStream is = ClassLoader.getSystemResourceAsStream("softhsm-wallet-000" + ".properties");
     try {
       p.load(is);

@@ -1,5 +1,5 @@
 /*
- * Copyright 2018 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -12,16 +12,24 @@
  */
 package tech.pegasys.accountgenerator.generator.hsm;
 
+import static tech.pegasys.accountgenerator.DefaultCommandValues.MANDATORY_PATH_FORMAT_HELP;
+import static tech.pegasys.accountgenerator.RequiredOptionsUtil.checkIfRequiredOptionsAreInitialized;
+
 import tech.pegasys.accountgenerator.AccountGeneratorSubCommand;
 import tech.pegasys.accountgenerator.KeyGeneratorInitializationException;
+import tech.pegasys.accountgenerator.TomlTableAdapter;
 import tech.pegasys.accountgenerator.core.KeyGeneratorProvider;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 import com.google.common.base.MoreObjects;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+import org.apache.tuweni.toml.TomlParseResult;
+import org.apache.tuweni.toml.TomlTable;
 import picocli.CommandLine;
 import picocli.CommandLine.Command;
-import picocli.CommandLine.Option;
 import picocli.CommandLine.Spec;
 
 /** HSM-based authentication related sub-command */
@@ -31,7 +39,9 @@ import picocli.CommandLine.Spec;
     mixinStandardHelpOptions = true)
 public class HSMSubCommand extends AccountGeneratorSubCommand {
 
+  private static final Logger LOG = LogManager.getLogger();
   public static final String COMMAND_NAME = "hsm-account-generator";
+  private HSMConfig hsmConfig;
 
   public HSMSubCommand() {}
 
@@ -39,31 +49,35 @@ public class HSMSubCommand extends AccountGeneratorSubCommand {
   @Spec
   private CommandLine.Model.CommandSpec spec;
 
-  @Option(
-      names = {"-l", "--library"},
-      description = "The HSM PKCS11 library used to sign transactions.",
-      paramLabel = "<LIBRARY_PATH>",
+  @CommandLine.Option(
+      names = {"-c", "--config"},
+      description = "The path to a config file to initialize generator provider",
+      paramLabel = MANDATORY_PATH_FORMAT_HELP,
+      arity = "1",
       required = true)
-  private Path libraryPath;
-
-  @Option(
-      names = {"-s", "--slot-label"},
-      description = "The HSM slot used to sign transactions.",
-      paramLabel = "<SLOT_LABEL>",
-      required = true)
-  private String slotLabel;
-
-  @Option(
-      names = {"-p", "--slot-pin"},
-      description = "The crypto user pin of the HSM slot used to sign transactions.",
-      paramLabel = "<SLOT_PIN>",
-      required = true)
-  private String slotPin;
+  private Path config;
 
   @Override
   public KeyGeneratorProvider createGeneratorFactory(Path directory)
       throws KeyGeneratorInitializationException {
-    return new HSMKeyGeneratorFactory(libraryPath.toString(), slotLabel, slotPin, directory);
+    Optional<TomlParseResult> result = loadConfig(config);
+    if (result.isPresent()) {
+      try {
+        hsmConfig = getHSMConfigFrom(result.get());
+        final HSMWalletProvider provider = new HSMWalletProvider(hsmConfig);
+        provider.initialize();
+        return new HSMKeyGeneratorFactory(provider, directory);
+      } catch (final Exception e) {
+        LOG.error("Unable to initialize HSM generator factory from config in " + config);
+      }
+    }
+    return null;
+  }
+
+  @Override
+  protected void validateArgs() throws KeyGeneratorInitializationException {
+    checkIfRequiredOptionsAreInitialized(this);
+    super.validateArgs();
   }
 
   @Override
@@ -71,11 +85,33 @@ public class HSMSubCommand extends AccountGeneratorSubCommand {
     return COMMAND_NAME;
   }
 
+  public Path getConfig() {
+    return config;
+  }
+
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this)
-        .add("library", libraryPath)
-        .add("slot", slotLabel)
-        .toString();
+    if (hsmConfig != null) {
+      return MoreObjects.toStringHelper(this)
+          .add("config", config)
+          .add("library", hsmConfig.getLibrary())
+          .add("slot", hsmConfig.getSlot())
+          .toString();
+    }
+    return "";
+  }
+
+  private static HSMConfig getHSMConfigFrom(TomlParseResult result) {
+    HSMConfig.HSMConfigBuilder builder = new HSMConfig.HSMConfigBuilder();
+    TomlTable hsmSignerTable = result.getTable("hsm-generator");
+    if (hsmSignerTable != null && !hsmSignerTable.isEmpty()) {
+      TomlTableAdapter table = new TomlTableAdapter(hsmSignerTable);
+      builder.withLibrary(table.getString("library"));
+      builder.withSlot(table.getString("slot"));
+      builder.withPin(table.getString("pin"));
+      return builder.build();
+    } else {
+      return builder.fromEnvironmentVariables().build();
+    }
   }
 }

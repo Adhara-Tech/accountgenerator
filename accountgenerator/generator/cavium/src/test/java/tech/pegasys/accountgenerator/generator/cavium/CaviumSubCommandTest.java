@@ -10,11 +10,11 @@
  * an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the License for the
  * specific language governing permissions and limitations under the License.
  */
-package tech.pegasys.accountgenerator.generator.hsm;
+package tech.pegasys.accountgenerator.generator.cavium;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.fail;
-import static tech.pegasys.accountgenerator.generator.hsm.HSMSubCommand.COMMAND_NAME;
+import static tech.pegasys.accountgenerator.generator.cavium.CaviumSubCommand.COMMAND_NAME;
 
 import tech.pegasys.accountgenerator.AccountGeneratorBaseCommand;
 import tech.pegasys.accountgenerator.AccountGeneratorSubCommand;
@@ -37,7 +37,7 @@ import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
-class HSMSubCommandTest {
+class CaviumSubCommandTest {
 
   @TempDir static Path tempDir;
 
@@ -66,8 +66,8 @@ class HSMSubCommandTest {
         commandLine.getSubcommands().get(subCommand.getCommandName()).getUsageMessage();
   }
 
-  protected HSMSubCommand subCommand() {
-    return new HSMSubCommand() {
+  protected CaviumSubCommand subCommand() {
+    return new CaviumSubCommand() {
       @Override
       public void run() {
         // we only want to perform validation in these unit test cases
@@ -84,7 +84,7 @@ class HSMSubCommandTest {
     final List<String> options = getOptions(subCommandOptions);
     final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
     assertThat(result).isTrue();
-    assertThat(((HSMSubCommand) subCommand).getConfig()).isEqualTo(expectedPath);
+    assertThat(((CaviumSubCommand) subCommand).getConfig()).isEqualTo(expectedPath);
   }
 
   @Test
@@ -93,13 +93,13 @@ class HSMSubCommandTest {
     final List<String> options = getOptions(subCommandOptions);
     final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
     assertThat(result).isFalse();
-    assertThat(((HSMSubCommand) subCommand).getConfig()).isNull();
+    assertThat(((CaviumSubCommand) subCommand).getConfig()).isNull();
   }
 
   @Test
   void parseTomlSuccess() {
-    Path configPath = tempDir.resolve("accountgenerator-config-softhsm.toml");
-    createHSMTomlFileAt(configPath);
+    Path configPath = tempDir.resolve("accountgenerator-config-cavium.toml");
+    createCaviumTomlFileAt(configPath);
     final List<String> subCommandOptions = List.of("--config", configPath.toString());
     final List<String> options = getOptions(subCommandOptions);
     final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
@@ -117,12 +117,12 @@ class HSMSubCommandTest {
     return cmdLine;
   }
 
-  public void createHSMTomlFileAt(final Path tomlPath) {
+  public void createCaviumTomlFileAt(final Path tomlPath) {
     final StringBuilder sb = new StringBuilder();
-    sb.append(String.format("[%s]\n", "hsm-generator"));
-    sb.append(String.format("%s = \"%s\"\n", "library", "/usr/local/lib/softhsm/libsofthsm2.so"));
-    sb.append(String.format("%s = \"%s\"\n", "slot", "WALLET-005"));
-    sb.append(String.format("%s = \"%s\"\n", "pin", "us3rs3cur3"));
+    sb.append(String.format("[%s]\n", "cavium-generator"));
+    sb.append(String.format("%s = \"%s\"\n", "library", "/opt/cloudhsm/lib/libcloudhsm_pkcs11.so"));
+    sb.append(String.format("%s = \"%s\"\n", "pin", "alice:391019314"));
+    sb.append(String.format("%s = \"%s\"\n", "sas", "/opt/accountgenerator/scripts/sas.sh"));
     final String toml = sb.toString();
     createTomlFile(tomlPath, toml);
   }

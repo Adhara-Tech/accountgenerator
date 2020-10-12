@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -24,17 +24,15 @@ public class HSMKeyGenerator implements KeyGenerator {
 
   private static final Logger LOG = LogManager.getLogger();
 
-  private final HSMCrypto crypto;
-  private final HSMWallet wallet;
+  private final HSMWalletProvider provider;
 
-  public HSMKeyGenerator(final HSMCrypto crypto, final HSMWallet wallet) {
-    this.crypto = crypto;
-    this.wallet = wallet;
+  public HSMKeyGenerator(final HSMWalletProvider provider) {
+    this.provider = provider;
   }
 
   @Override
   public String generate() {
-    String address = wallet.generate();
+    String address = provider.getWallet().generate();
     LOG.info("Generated new key with address: " + address);
     return address;
   }
@@ -50,13 +48,14 @@ public class HSMKeyGenerator implements KeyGenerator {
     sb.append(String.format("[%s]\n", "signing"));
     sb.append(String.format("%s = \"%s\"\n", "type", "hsm-signer"));
     sb.append(String.format("%s = \"%s\"\n", "address", address));
-    sb.append(String.format("%s = \"%s\"\n", "slot", wallet.getLabel()));
+    sb.append(String.format("%s = \"%s\"\n", "slot", provider.getWallet().getLabel()));
     return sb.toString();
   }
 
   @Override
   public void shutdown() {
-    wallet.close();
-    crypto.shutdown();
+    //    wallet.close();
+    //    crypto.shutdown();
+    provider.shutdown();
   }
 }

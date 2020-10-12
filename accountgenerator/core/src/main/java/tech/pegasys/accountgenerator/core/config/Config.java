@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,6 +13,7 @@
 package tech.pegasys.accountgenerator.core.config;
 
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Optional;
 
 import org.apache.logging.log4j.Level;
@@ -24,6 +25,8 @@ public interface Config {
   String getHttpListenHost();
 
   Integer getHttpListenPort();
+
+  Collection<String> getCorsAllowedOrigins();
 
   Path getDataPath();
 

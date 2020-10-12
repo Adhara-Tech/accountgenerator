@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -33,6 +33,7 @@ public class HSMKeyGeneratorTest {
   private static String slot;
   private static String pin;
 
+  private static HSMWalletProvider provider;
   private static KeyGenerator generator;
 
   @BeforeAll
@@ -49,16 +50,16 @@ public class HSMKeyGeneratorTest {
     }
 
     org.junit.jupiter.api.Assumptions.assumeTrue((new File(library)).exists());
-    HSMKeyGeneratorFactory factory =
-        new HSMKeyGeneratorFactory(library, slot, pin, Path.of("/tmp"));
-    factory.initialize();
+    provider = new HSMWalletProvider(new HSMConfig(library, slot, pin));
+    provider.initialize();
+    HSMKeyGeneratorFactory factory = new HSMKeyGeneratorFactory(provider, Path.of("/tmp"));
     generator = factory.getGenerator();
   }
 
   @AfterAll
   public static void afterAll() {
-    if (generator != null) {
-      generator.shutdown();
+    if (provider != null) {
+      provider.shutdown();
     }
   }
 

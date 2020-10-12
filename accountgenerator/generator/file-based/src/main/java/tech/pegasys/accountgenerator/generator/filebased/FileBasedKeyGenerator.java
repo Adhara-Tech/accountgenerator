@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -51,7 +51,7 @@ public class FileBasedKeyGenerator implements KeyGenerator {
       if (!success) throw new Exception("Can't rename newly generated key file");
       Credentials credentials = WalletUtils.loadCredentials(password, renamed.toFile());
       address = Keys.toChecksumAddress(credentials.getAddress());
-      LOG.debug("Generated new key with address: " + address);
+      LOG.info("Generated new key with address: " + address);
     } catch (final Exception ex) {
       LOG.error(ex);
     }

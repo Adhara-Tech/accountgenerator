@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,58 +13,88 @@
 package tech.pegasys.accountgenerator.generator.filebased;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static tech.pegasys.accountgenerator.generator.filebased.FileBasedSubCommand.COMMAND_NAME;
 
-import java.nio.file.Paths;
+import tech.pegasys.accountgenerator.AccountGeneratorBaseCommand;
+import tech.pegasys.accountgenerator.AccountGeneratorSubCommand;
+import tech.pegasys.accountgenerator.CommandlineParser;
 
-import org.apache.logging.log4j.Level;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
 public class FileBasedSubCommandTest {
 
-  private static final String PASSWORD_FILE =
-      Paths.get("/this/is/the/path/to/the/password/file").toString();
+  protected final StringWriter commandOutput = new StringWriter();
+  protected final StringWriter commandError = new StringWriter();
+  protected final PrintWriter outputWriter = new PrintWriter(commandOutput, true);
+  protected final PrintWriter errorWriter = new PrintWriter(commandError, true);
 
-  private FileBasedSubCommand config;
+  protected AccountGeneratorBaseCommand config;
+  protected CommandlineParser parser;
+  protected AccountGeneratorSubCommand subCommand;
+  protected String defaultUsageText;
+  protected String subCommandUsageText;
 
-  private boolean parseCommand(final String cmdLine) {
-    config = new FileBasedSubCommand();
-    final CommandLine commandLine = new CommandLine(config);
-    commandLine.setCaseInsensitiveEnumValuesAllowed(true);
-    commandLine.registerConverter(Level.class, Level::valueOf);
+  @BeforeEach
+  void setup() {
+    subCommand = subCommand();
+    config = new AccountGeneratorBaseCommand();
+    parser = new CommandlineParser(config, outputWriter, errorWriter);
+    parser.registerGenerator(subCommand);
 
-    try {
-      commandLine.parse(cmdLine.split(" "));
-    } catch (final CommandLine.ParameterException e) {
-      return false;
-    }
-    return true;
+    final CommandLine commandLine = new CommandLine(new AccountGeneratorBaseCommand());
+    commandLine.addSubcommand(subCommand.getCommandName(), subCommand);
+    defaultUsageText = commandLine.getUsageMessage();
+    subCommandUsageText =
+        commandLine.getSubcommands().get(subCommand.getCommandName()).getUsageMessage();
   }
 
-  private String validCommandLine() {
-    return "--password-file=" + PASSWORD_FILE;
+  protected FileBasedSubCommand subCommand() {
+    return new FileBasedSubCommand() {
+      @Override
+      public void run() {
+        // we only want to perform validation in these unit test cases
+        validateArgs();
+      }
+    };
   }
 
-  private String removeFieldFrom(final String input, final String fieldname) {
-    return input.replaceAll("--" + fieldname + "=.*?(\\s|$)", "");
-  }
-
-  @Test
-  public void fullyPopulatedCommandLineParsesIntoVariables() {
-    final boolean result = parseCommand(validCommandLine());
-
+  @ParameterizedTest
+  @ValueSource(strings = {"--password-file", "-p"})
+  void parseCommandSuccessWithPasswordFile(final String subCommandOption) {
+    final Path expectedPath = Path.of("/keys/directory/path/to/password/file");
+    final List<String> subCommandOptions = List.of(subCommandOption, expectedPath.toString());
+    final List<String> options = getOptions(subCommandOptions);
+    final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
     assertThat(result).isTrue();
-    assertThat(config.toString()).contains(PASSWORD_FILE);
   }
 
   @Test
-  public void missingRequiredParamShowsAppropriateError() {
-    missingParameterShowsError("password-file");
+  void parseCommandFailsWithoutPasswordFile() {
+    final List<String> subCommandOptions = new ArrayList<>();
+    final List<String> options = getOptions(subCommandOptions);
+    final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
+    assertThat(result).isFalse();
   }
 
-  private void missingParameterShowsError(final String paramToRemove) {
-    final String cmdLine = removeFieldFrom(validCommandLine(), paramToRemove);
-    final boolean result = parseCommand(cmdLine);
-    assertThat(result).isFalse();
+  private List<String> getOptions(final List<String> subCommandOptions) {
+    final Map<String, Object> options = new LinkedHashMap<>();
+    options.put("directory", "/keys/directory");
+    final List<String> cmdLine = new ArrayList<>();
+    options.forEach((option, value) -> cmdLine.add("--" + option + "=" + value));
+    cmdLine.add(COMMAND_NAME);
+    cmdLine.addAll(subCommandOptions);
+    return cmdLine;
   }
 }

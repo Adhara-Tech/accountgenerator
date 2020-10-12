@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -13,7 +13,6 @@
 package tech.pegasys.accountgenerator.core;
 
 import tech.pegasys.accountgenerator.core.http.HttpResponseFactory;
-import tech.pegasys.accountgenerator.core.http.HttpServerService;
 import tech.pegasys.accountgenerator.core.http.JsonRpcErrorHandler;
 import tech.pegasys.accountgenerator.core.http.JsonRpcHandler;
 import tech.pegasys.accountgenerator.core.http.LogErrorHandler;
@@ -26,15 +25,23 @@ import tech.pegasys.accountgenerator.core.requesthandler.GenerateAccountHandler;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.nio.file.Path;
+import java.util.Collection;
 import java.util.Properties;
+import java.util.StringJoiner;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 
+import com.google.common.collect.Sets;
 import io.netty.handler.codec.http.HttpHeaderValues;
-import io.vertx.core.AsyncResult;
+import io.vertx.core.Handler;
 import io.vertx.core.Vertx;
 import io.vertx.core.http.HttpMethod;
+import io.vertx.core.http.HttpServer;
 import io.vertx.core.http.HttpServerOptions;
+import io.vertx.core.http.HttpServerRequest;
 import io.vertx.ext.web.Router;
 import io.vertx.ext.web.handler.BodyHandler;
+import io.vertx.ext.web.handler.CorsHandler;
 import io.vertx.ext.web.handler.ResponseContentTypeHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -50,23 +57,30 @@ public class Runner {
   private final JsonDecoder jsonDecoder;
   private final Path dataPath;
   private final Vertx vertx;
-  private final HttpServerService httpServerService;
+  private final Collection<String> allowedCorsOrigins;
+  private final HttpServerOptions serverOptions;
 
   public Runner(
       final KeyGeneratorProvider keyGeneratorProvider,
       final HttpServerOptions serverOptions,
       final JsonDecoder jsonDecoder,
       final Path dataPath,
-      final Vertx vertx) {
+      final Vertx vertx,
+      final Collection<String> allowedCorsOrigins) {
     this.keyGeneratorProvider = keyGeneratorProvider;
     this.jsonDecoder = jsonDecoder;
     this.dataPath = dataPath;
     this.vertx = vertx;
-    this.httpServerService = new HttpServerService(router(), serverOptions);
+    this.allowedCorsOrigins = allowedCorsOrigins;
+    this.serverOptions = serverOptions;
   }
 
-  public void start() {
-    vertx.deployVerticle(httpServerService, this::httpServerServiceDeployment);
+  public void start() throws ExecutionException, InterruptedException {
+    final HttpServer httpServer = createServerAndWait(vertx, router());
+    LOG.info("Server is up, and listening on {}", httpServer.actualPort());
+    if (dataPath != null) {
+      writePortsToFile(httpServer);
+    }
   }
 
   private Router router() {
@@ -74,6 +88,12 @@ public class Runner {
     final Router router = Router.router(vertx);
 
     // Handler for JSON-RPC requests
+    router
+        .route()
+        .handler(
+            CorsHandler.create(buildCorsRegexFromConfig())
+                .allowedHeaders(Sets.newHashSet("*", "content-type")));
+
     router
         .route(HttpMethod.POST, "/")
         .produces(JSON)
@@ -106,30 +126,12 @@ public class Runner {
     return requestMapper;
   }
 
-  private void httpServerServiceDeployment(final AsyncResult<String> result) {
-    if (result.succeeded()) {
-      LOG.info("JsonRpcHttpService Vertx deployment id is: {}", result.result());
-
-      if (dataPath != null) {
-        writePortsToFile(httpServerService);
-      }
-    } else {
-      deploymentFailed(result.cause());
-    }
-  }
-
-  private void deploymentFailed(final Throwable cause) {
-    LOG.error("Vertx deployment failed", cause);
-    vertx.close();
-    System.exit(1);
-  }
-
-  private void writePortsToFile(final HttpServerService httpService) {
+  private void writePortsToFile(final HttpServer server) {
     final File portsFile = new File(dataPath.toFile(), "accountgenerator.ports");
     portsFile.deleteOnExit();
 
     final Properties properties = new Properties();
-    properties.setProperty("http-jsonrpc", String.valueOf(httpService.actualPort()));
+    properties.setProperty("http-jsonrpc", String.valueOf(server.actualPort()));
 
     LOG.info(
         "Writing accountgenerator.ports file: {}, with contents: {}",
@@ -142,5 +144,43 @@ public class Runner {
     } catch (final Exception e) {
       LOG.warn("Error writing ports file", e);
     }
+  }
+
+  private String buildCorsRegexFromConfig() {
+    if (allowedCorsOrigins.isEmpty()) {
+      return "";
+    }
+    if (allowedCorsOrigins.contains("*")) {
+      return "*";
+    } else {
+      final StringJoiner stringJoiner = new StringJoiner("|");
+      allowedCorsOrigins.stream().filter(s -> !s.isEmpty()).forEach(stringJoiner::add);
+      return stringJoiner.toString();
+    }
+  }
+
+  private HttpServer createServerAndWait(
+      final Vertx vertx, final Handler<HttpServerRequest> requestHandler)
+      throws ExecutionException, InterruptedException {
+
+    final HttpServer httpServer = vertx.createHttpServer(serverOptions);
+    final CompletableFuture<Void> serverRunningFuture = new CompletableFuture<>();
+    httpServer
+        .requestHandler(requestHandler)
+        .listen(
+            result -> {
+              if (result.succeeded()) {
+                serverRunningFuture.complete(null);
+              } else {
+                LOG.error(
+                    "Failed to create HTTP Server on {}:{}",
+                    serverOptions.getHost(),
+                    serverOptions.getPort());
+                serverRunningFuture.completeExceptionally(result.cause());
+              }
+            });
+    serverRunningFuture.get();
+
+    return httpServer;
   }
 }

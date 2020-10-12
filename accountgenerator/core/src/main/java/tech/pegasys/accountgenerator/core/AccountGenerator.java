@@ -1,5 +1,5 @@
 /*
- * Copyright 2019 ConsenSys AG.
+ * Copyright 2020 ConsenSys AG.
  *
  * Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with
  * the License. You may obtain a copy of the License at
@@ -61,11 +61,14 @@ public final class AccountGenerator {
               applyConfigTlsSettingsTo(serverOptions),
               jsonDecoder,
               config.getDataPath(),
-              vertx);
+              vertx,
+              config.getCorsAllowedOrigins());
       runner.start();
     } catch (final Throwable t) {
       vertx.close();
-      keyGeneratorProvider.shutdown();
+      if (keyGeneratorProvider != null) {
+        keyGeneratorProvider.shutdown();
+      }
       throw new InitializationException("Failed to create http service.", t);
     }
     Runtime.getRuntime().addShutdownHook(new Shutdown());
@@ -74,7 +77,9 @@ public final class AccountGenerator {
   class Shutdown extends Thread {
     @Override
     public void run() {
-      keyGeneratorProvider.shutdown();
+      if (keyGeneratorProvider != null) {
+        keyGeneratorProvider.shutdown();
+      }
       System.out.println("Shutting down AccountGenerator");
     }
   }
