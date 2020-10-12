@@ -61,7 +61,8 @@ public final class AccountGenerator {
               applyConfigTlsSettingsTo(serverOptions),
               jsonDecoder,
               config.getDataPath(),
-              vertx);
+              vertx,
+              config.getCorsAllowedOrigins());
       runner.start();
     } catch (final Throwable t) {
       vertx.close();

@@ -16,49 +16,36 @@ import tech.pegasys.accountgenerator.core.KeyGeneratorProvider;
 
 import java.nio.file.Path;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 public class HSMKeyGeneratorFactory implements KeyGeneratorProvider {
 
-  private final HSMCrypto crypto;
-  private final HSMWallet wallet;
-  private final String slotLabel;
-  private final String slotPin;
+  protected static final Logger LOG = LogManager.getLogger();
+  private final HSMWalletProvider provider;
   private final Path directory;
-  private boolean initialized = false;
 
-  public HSMKeyGeneratorFactory(
-      final String library, final String slotLabel, final String slotPin, final Path directory) {
-    this.slotLabel = slotLabel;
-    this.slotPin = slotPin;
-    crypto = new HSMCrypto(library);
-    wallet = new HSMWallet(this.crypto, this.slotLabel);
+  public HSMKeyGeneratorFactory(final HSMWalletProvider provider, final Path directory) {
+    this.provider = provider;
     this.directory = directory;
-  }
-
-  public void initialize() {
-    crypto.initialize();
-    wallet.open(slotPin);
-    initialized = true;
   }
 
   @Override
   public void shutdown() {
-    wallet.close();
-    crypto.shutdown();
-    initialized = false;
+    provider.shutdown();
   }
 
   public HSMWallet getWallet() {
-    return wallet;
+    return provider.getWallet();
   }
 
   public String getSlotLabel() {
-    return slotLabel;
+    return provider.getWallet().getLabel();
   }
 
   @Override
   public HSMKeyGenerator getGenerator() {
-    if (!initialized) initialize();
-    return new HSMKeyGenerator(crypto, wallet);
+    return new HSMKeyGenerator(provider);
   }
 
   @Override

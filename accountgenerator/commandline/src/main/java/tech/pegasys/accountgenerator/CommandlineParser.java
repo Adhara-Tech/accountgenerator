@@ -53,7 +53,6 @@ public class CommandlineParser {
   }
 
   public boolean parseCommandLine(final String... args) {
-
     final CommandLine commandLine = new CommandLine(baseCommand);
     commandLine.setCaseInsensitiveEnumValuesAllowed(true);
     commandLine.registerConverter(Level.class, Level::valueOf);

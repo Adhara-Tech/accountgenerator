@@ -17,10 +17,13 @@ import tech.pegasys.accountgenerator.core.InitializationException;
 import tech.pegasys.accountgenerator.core.KeyGeneratorProvider;
 
 import java.nio.file.Path;
+import java.util.Optional;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.config.Configurator;
+import org.apache.tuweni.toml.TomlInvalidTypeException;
+import org.apache.tuweni.toml.TomlParseResult;
 import picocli.CommandLine;
 
 public abstract class AccountGeneratorSubCommand implements Runnable {
@@ -55,5 +58,25 @@ public abstract class AccountGeneratorSubCommand implements Runnable {
     final AccountGenerator generator =
         new AccountGenerator(config, createGeneratorFactory(config.getDirectory()));
     generator.run();
+  }
+
+  protected static Optional<TomlParseResult> loadConfig(Path file) {
+    if (file == null) {
+      return Optional.empty();
+    } else {
+      String filename = file.getFileName().toString();
+
+      try {
+        return Optional.of(
+            TomlConfigFileParser.loadConfigurationFromFile(file.toAbsolutePath().toString()));
+      } catch (TomlInvalidTypeException | IllegalArgumentException var4) {
+        String errorMsg = String.format("%s failed to decode: %s", filename, var4.getMessage());
+        LOG.error(errorMsg);
+        return Optional.empty();
+      } catch (Exception var5) {
+        LOG.error("Could not load TOML file " + file, var5);
+        return Optional.empty();
+      }
+    }
   }
 }

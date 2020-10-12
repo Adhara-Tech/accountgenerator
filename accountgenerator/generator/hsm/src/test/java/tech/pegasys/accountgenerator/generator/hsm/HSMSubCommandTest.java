@@ -13,60 +13,125 @@
 package tech.pegasys.accountgenerator.generator.hsm;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.fail;
+import static tech.pegasys.accountgenerator.generator.hsm.HSMSubCommand.COMMAND_NAME;
 
-import org.apache.logging.log4j.Level;
+import tech.pegasys.accountgenerator.AccountGeneratorBaseCommand;
+import tech.pegasys.accountgenerator.AccountGeneratorSubCommand;
+import tech.pegasys.accountgenerator.CommandlineParser;
+
+import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import picocli.CommandLine;
 
-public class HSMSubCommandTest {
+class HSMSubCommandTest {
 
-  private static final String LIBRARY = "/this/is/the/path/to/the/library/library.so";
-  private static final String SLOT = "slot";
-  private static final String PIN = "pin";
+  @TempDir static Path tempDir;
 
-  private HSMSubCommand config;
+  protected final StringWriter commandOutput = new StringWriter();
+  protected final StringWriter commandError = new StringWriter();
+  protected final PrintWriter outputWriter = new PrintWriter(commandOutput, true);
+  protected final PrintWriter errorWriter = new PrintWriter(commandError, true);
 
-  private boolean parseCommand(final String cmdLine) {
-    config = new HSMSubCommand();
-    final CommandLine commandLine = new CommandLine(config);
-    commandLine.setCaseInsensitiveEnumValuesAllowed(true);
-    commandLine.registerConverter(Level.class, Level::valueOf);
+  protected AccountGeneratorBaseCommand config;
+  protected CommandlineParser parser;
+  protected AccountGeneratorSubCommand subCommand;
+  protected String defaultUsageText;
+  protected String subCommandUsageText;
 
-    try {
-      commandLine.parse(cmdLine.split(" "));
-    } catch (final CommandLine.ParameterException e) {
-      return false;
-    }
-    return true;
+  @BeforeEach
+  void setup() {
+    subCommand = subCommand();
+    config = new AccountGeneratorBaseCommand();
+    parser = new CommandlineParser(config, outputWriter, errorWriter);
+    parser.registerGenerator(subCommand);
+
+    final CommandLine commandLine = new CommandLine(new AccountGeneratorBaseCommand());
+    commandLine.addSubcommand(subCommand.getCommandName(), subCommand);
+    defaultUsageText = commandLine.getUsageMessage();
+    subCommandUsageText =
+        commandLine.getSubcommands().get(subCommand.getCommandName()).getUsageMessage();
   }
 
-  private String validCommandLine() {
-    return "--library=" + LIBRARY + " --slot-label=" + SLOT + " --slot-pin=" + PIN;
+  protected HSMSubCommand subCommand() {
+    return new HSMSubCommand() {
+      @Override
+      public void run() {
+        // we only want to perform validation in these unit test cases
+        validateArgs();
+      }
+    };
   }
 
-  private String removeFieldFrom(final String input, final String fieldname) {
-    return input.replaceAll("--" + fieldname + "=.*?(\\s|$)", "");
-  }
-
-  @Test
-  public void fullyPopulatedCommandLineParsesIntoVariables() {
-    final boolean result = parseCommand(validCommandLine());
-
+  @ParameterizedTest
+  @ValueSource(strings = {"--config", "-c"})
+  void parseCommandSuccessWithConfig(final String subCommandOption) {
+    final Path expectedPath = Path.of("/keys/directory/path/to/config/file");
+    final List<String> subCommandOptions = List.of(subCommandOption, expectedPath.toString());
+    final List<String> options = getOptions(subCommandOptions);
+    final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
     assertThat(result).isTrue();
-    assertThat(config.toString()).contains(LIBRARY);
-    assertThat(config.toString()).contains(SLOT);
+    assertThat(((HSMSubCommand) subCommand).getConfig()).isEqualTo(expectedPath);
   }
 
   @Test
-  public void missingRequiredParamShowsAppropriateError() {
-    missingParameterShowsError("library");
-    missingParameterShowsError("slot-label");
-    missingParameterShowsError("slot-pin");
+  void parseCommandFailsWithoutConfig() {
+    final List<String> subCommandOptions = new ArrayList<>();
+    final List<String> options = getOptions(subCommandOptions);
+    final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
+    assertThat(result).isFalse();
+    assertThat(((HSMSubCommand) subCommand).getConfig()).isNull();
   }
 
-  private void missingParameterShowsError(final String paramToRemove) {
-    final String cmdLine = removeFieldFrom(validCommandLine(), paramToRemove);
-    final boolean result = parseCommand(cmdLine);
-    assertThat(result).isFalse();
+  @Test
+  void parseTomlSuccess() {
+    Path configPath = tempDir.resolve("accountgenerator-config-softhsm.toml");
+    createHSMTomlFileAt(configPath);
+    final List<String> subCommandOptions = List.of("--config", configPath.toString());
+    final List<String> options = getOptions(subCommandOptions);
+    final boolean result = parser.parseCommandLine(options.toArray(String[]::new));
+    assertThat(result).isTrue();
+    // subCommand.createGeneratorFactory(tempDir);
+  }
+
+  private List<String> getOptions(final List<String> subCommandOptions) {
+    final Map<String, Object> options = new LinkedHashMap<>();
+    options.put("directory", "/keys/directory");
+    final List<String> cmdLine = new ArrayList<>();
+    options.forEach((option, value) -> cmdLine.add("--" + option + "=" + value));
+    cmdLine.add(COMMAND_NAME);
+    cmdLine.addAll(subCommandOptions);
+    return cmdLine;
+  }
+
+  public void createHSMTomlFileAt(final Path tomlPath) {
+    final StringBuilder sb = new StringBuilder();
+    sb.append(String.format("[%s]\n", "hsm-generator"));
+    sb.append(String.format("%s = \"%s\"\n", "library", "/usr/local/lib/softhsm/libsofthsm2.so"));
+    sb.append(String.format("%s = \"%s\"\n", "slot", "WALLET-005"));
+    sb.append(String.format("%s = \"%s\"\n", "pin", "us3rs3cur3"));
+    final String toml = sb.toString();
+    createTomlFile(tomlPath, toml);
+  }
+
+  private void createTomlFile(final Path tomlPath, final String toml) {
+    try {
+      Files.writeString(tomlPath, toml);
+    } catch (final IOException e) {
+      fail("Unable to create TOML file.");
+    }
   }
 }

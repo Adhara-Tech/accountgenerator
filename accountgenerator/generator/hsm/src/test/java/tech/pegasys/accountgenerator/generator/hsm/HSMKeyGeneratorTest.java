@@ -33,6 +33,7 @@ public class HSMKeyGeneratorTest {
   private static String slot;
   private static String pin;
 
+  private static HSMWalletProvider provider;
   private static KeyGenerator generator;
 
   @BeforeAll
@@ -49,16 +50,16 @@ public class HSMKeyGeneratorTest {
     }
 
     org.junit.jupiter.api.Assumptions.assumeTrue((new File(library)).exists());
-    HSMKeyGeneratorFactory factory =
-        new HSMKeyGeneratorFactory(library, slot, pin, Path.of("/tmp"));
-    factory.initialize();
+    provider = new HSMWalletProvider(new HSMConfig(library, slot, pin));
+    provider.initialize();
+    HSMKeyGeneratorFactory factory = new HSMKeyGeneratorFactory(provider, Path.of("/tmp"));
     generator = factory.getGenerator();
   }
 
   @AfterAll
   public static void afterAll() {
-    if (generator != null) {
-      generator.shutdown();
+    if (provider != null) {
+      provider.shutdown();
     }
   }
 

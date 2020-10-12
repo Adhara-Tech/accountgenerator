@@ -40,7 +40,7 @@ public class HSMKeyStoreProvider {
 
   protected Provider provider;
   protected KeyStore keyStore;
-  protected String lib;
+  protected String library;
   private String configName;
   protected String slotIndex;
   protected String slotPin;
@@ -55,10 +55,6 @@ public class HSMKeyStoreProvider {
     sb.append("attributes(generate, *, *) = { CKA_TOKEN = true }\n");
     sb.append("attributes(generate, CKO_CERTIFICATE, *) = { CKA_PRIVATE=false }\n");
     sb.append("attributes(generate, CKO_PUBLIC_KEY, *) = { CKA_PRIVATE=false }\n");
-    // sb.append("attributes(generate, CKO_CERTIFICATE, *) = { CKA_PRIVATE=true }\n");
-    // sb.append("attributes(generate, CKO_PUBLIC_KEY, *) = { CKA_PRIVATE=true CKA_VERIFY=true
-    // }\n");
-    // sb.append("attributes(generate, CKO_PRIVATE_KEY, *) = { CKA_PRIVATE=true CKA_SIGN=true }\n");
     final String configContent = sb.toString();
     try {
       Path configPath = Files.createTempFile("pkcs11-", ".cfg");
@@ -71,9 +67,9 @@ public class HSMKeyStoreProvider {
       LOG.trace(ex);
       throw new HSMKeyStoreInitializationException(ERROR_CREATING_TMP_FILE_MESSAGE, ex);
     }
-    lib = library;
-    slotIndex = slot;
-    slotPin = pin;
+    this.library = library;
+    this.slotIndex = slot;
+    this.slotPin = pin;
   }
 
   protected void initialize() throws HSMKeyStoreInitializationException {
@@ -97,9 +93,9 @@ public class HSMKeyStoreProvider {
   }
 
   public void shutdown() {
-    if (lib != null)
+    if (library != null)
       try {
-        Module pkcs11Module = Module.getInstance(lib);
+        Module pkcs11Module = Module.getInstance(library);
         pkcs11Module.initialize(null);
         pkcs11Module.finalize(null);
       } catch (TokenException | IOException ex) {

@@ -10,6 +10,4 @@ docker run --rm --name accountgenerator \
   --http-listen-host="0.0.0.0" \
   --directory="/etc/accountgenerator/keyfiles/" \
   cavium-account-generator \
-  --sas="/etc/accountgenerator/scripts/sas.h" \
-  --library="/opt/cloudhsm/lib/libcloudhsm_pkcs11.so" \
-  --slot-pin="alice:*******" \
+  --config="/etc/ethsigner-config-cavium.toml"

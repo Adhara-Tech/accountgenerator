@@ -19,11 +19,11 @@ import java.nio.file.Path;
 public class CaviumKeyStoreGeneratorFactory implements KeyGeneratorProvider {
 
   private final CaviumKeyStoreProvider provider;
-  private final Path sas;
+  private final String sas;
   private final Path directory;
 
   public CaviumKeyStoreGeneratorFactory(
-      final CaviumKeyStoreProvider provider, final Path sas, final Path directory) {
+      final CaviumKeyStoreProvider provider, final String sas, final Path directory) {
     this.provider = provider;
     this.sas = sas;
     this.directory = directory;
@@ -31,7 +31,7 @@ public class CaviumKeyStoreGeneratorFactory implements KeyGeneratorProvider {
 
   @Override
   public HSMKeyStoreGenerator getGenerator() {
-    return new CaviumKeyStoreGenerator(provider, sas.toString());
+    return new CaviumKeyStoreGenerator(provider, sas);
   }
 
   @Override

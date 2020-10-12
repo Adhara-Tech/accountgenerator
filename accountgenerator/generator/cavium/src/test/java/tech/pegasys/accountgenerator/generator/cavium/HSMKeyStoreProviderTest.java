@@ -54,6 +54,7 @@ class HSMKeyStoreProviderTest {
 
     org.junit.jupiter.api.Assumptions.assumeTrue((new File(library).exists()));
     ksp = new HSMKeyStoreProvider(library, slot, pin);
+    ksp.initialize();
     kgr = new HSMKeyStoreGenerator(ksp);
   }
 

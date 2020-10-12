@@ -55,7 +55,8 @@ class CaviumKeyStoreProviderTest {
     }
 
     org.junit.jupiter.api.Assumptions.assumeTrue((new File(library).exists()));
-    ksp = new CaviumKeyStoreProvider(library, pin);
+    ksp = new CaviumKeyStoreProvider(new CaviumConfig(library, pin, sas));
+    ksp.initialize();
     kgr = new CaviumKeyStoreGenerator(ksp, sas);
   }
 

@@ -13,12 +13,14 @@
 package tech.pegasys.accountgenerator.generator.hsm;
 
 import java.io.IOException;
+import java.nio.charset.Charset;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 
 import iaik.pkcs.pkcs11.Mechanism;
 import iaik.pkcs.pkcs11.Module;
@@ -46,6 +48,25 @@ import org.web3j.crypto.Sign;
 
 public class HSMCrypto {
 
+  public static class TimeProvider {
+    Instant last = Instant.now().minusSeconds(1);
+
+    Instant getUniqueInstant() {
+      Instant result = Instant.now();
+      if (!result.isAfter(last)) {
+        result = last.plusNanos(1);
+      }
+      last = result;
+
+      return result;
+    }
+    // Overflow at 2262-04-11T23:47:16.854775807Z
+    long getUniqueValue() {
+      Instant inst = getUniqueInstant();
+      return TimeUnit.SECONDS.toNanos(inst.getEpochSecond()) + inst.getNano();
+    }
+  }
+
   private static final Logger LOG = LogManager.getLogger();
   private static final String CURVE = "secp256k1";
 
@@ -57,6 +78,7 @@ public class HSMCrypto {
   private final Map<Long, Session> sessions;
   private final X9ECParameters params;
   private final ECDomainParameters curve;
+  private final TimeProvider tp;
 
   public HSMCrypto(final String library) {
     this.library = library;
@@ -66,6 +88,7 @@ public class HSMCrypto {
     this.params = SECNamedCurves.getByName(CURVE);
     this.curve =
         new ECDomainParameters(params.getCurve(), params.getG(), params.getN(), params.getH());
+    this.tp = new TimeProvider();
   }
 
   // initialize gets information on available slots and initialize the crypto module
@@ -154,25 +177,27 @@ public class HSMCrypto {
   // generateECKeyPair generates a new key pair inside the wallet
   public String generateECKeyPair(long slotIndex) {
     String address;
-    byte[] id = timeToBytes();
+    byte[] priId = timeToBytes();
+    char[] priLabel = timeToChars();
     byte[] ecParams =
         new byte[] {
           (byte) 0x06, (byte) 0x05, (byte) 0x2B, (byte) 0x81, (byte) 0x04, (byte) 0x00, (byte) 0x0A
         };
-
     ECPrivateKey privateKeyTemplate = new ECPrivateKey();
     privateKeyTemplate.getToken().setBooleanValue(Boolean.TRUE);
     privateKeyTemplate.getSign().setBooleanValue(Boolean.TRUE);
     privateKeyTemplate.getPrivate().setBooleanValue(Boolean.TRUE);
-    privateKeyTemplate.getLabel().setCharArrayValue("EC-private-key".toCharArray());
-    privateKeyTemplate.getId().setByteArrayValue(id);
+    privateKeyTemplate.getLabel().setCharArrayValue(priLabel);
+    privateKeyTemplate.getId().setByteArrayValue(priId);
+    byte[] pubId = timeToBytes();
+    char[] pubLabel = timeToChars();
     ECPublicKey publicKeyTemplate = new ECPublicKey();
     publicKeyTemplate.getToken().setBooleanValue(Boolean.TRUE);
     publicKeyTemplate.getVerify().setBooleanValue(Boolean.TRUE);
     publicKeyTemplate.getEcdsaParams().setByteArrayValue(ecParams);
     publicKeyTemplate.getPrivate().setBooleanValue(Boolean.FALSE);
-    publicKeyTemplate.getLabel().setCharArrayValue("EC-public-key".toCharArray());
-    publicKeyTemplate.getId().setByteArrayValue(id);
+    publicKeyTemplate.getLabel().setCharArrayValue(pubLabel);
+    publicKeyTemplate.getId().setByteArrayValue(pubId);
     KeyPair keyPair;
     Session session = openSession(slotIndex);
     try {
@@ -281,15 +306,21 @@ public class HSMCrypto {
     }
   }
 
-  // timeToBytes returns the current unix time as a byte array
+  // timeToBytes returns unique unix nano time as a byte array
   private byte[] timeToBytes() {
-    long l = Instant.now().getEpochSecond();
+    long l = tp.getUniqueValue();
     byte[] result = new byte[8];
     for (int i = 7; i >= 0; i--) {
       result[i] = (byte) (l & 0xFF);
       l >>= 8;
     }
     return result;
+  }
+
+  // timeToBytes returns the current unix time as a byte array
+  private char[] timeToChars() {
+    byte[] result = timeToBytes();
+    return new String(result, Charset.defaultCharset()).toCharArray();
   }
 
   // getECPoint returns the CKA_EC_POINT of the given public key.

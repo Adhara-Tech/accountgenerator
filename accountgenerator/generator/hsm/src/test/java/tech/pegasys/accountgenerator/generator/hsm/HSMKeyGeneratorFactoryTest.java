@@ -34,6 +34,7 @@ public class HSMKeyGeneratorFactoryTest {
   private static String pin;
 
   private static HSMKeyGeneratorFactory factory;
+  private static HSMWalletProvider provider;
 
   @BeforeAll
   public static void beforeAll() {
@@ -49,8 +50,9 @@ public class HSMKeyGeneratorFactoryTest {
     }
 
     org.junit.jupiter.api.Assumptions.assumeTrue((new File(library)).exists());
-    factory = new HSMKeyGeneratorFactory(library, slot, pin, Path.of("/tmp"));
-    factory.initialize();
+    provider = new HSMWalletProvider(new HSMConfig(library, slot, pin));
+    provider.initialize();
+    factory = new HSMKeyGeneratorFactory(provider, Path.of("/tmp"));
   }
 
   @AfterAll

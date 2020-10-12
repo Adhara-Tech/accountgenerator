@@ -62,6 +62,6 @@ public class FileBasedSubCommand extends AccountGeneratorSubCommand {
 
   @Override
   public String toString() {
-    return MoreObjects.toStringHelper(this).add("passwordFilePath", passwordFilePath).toString();
+    return MoreObjects.toStringHelper(this).add("passwordFile", passwordFilePath).toString();
   }
 }

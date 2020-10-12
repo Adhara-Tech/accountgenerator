@@ -23,11 +23,11 @@ import com.google.common.base.Splitter;
 
 public class CaviumKeyStoreProvider extends HSMKeyStoreProvider {
 
-  public CaviumKeyStoreProvider(final String library, final String pin) {
-    lib = library;
-    slotPin = pin;
-    if (pin != null && pin.contains(":")) {
-      List<String> s = Splitter.on(':').splitToList(pin);
+  public CaviumKeyStoreProvider(final CaviumConfig config) {
+    library = config.getLibrary();
+    slotPin = config.getPin();
+    if (slotPin != null && slotPin.contains(":")) {
+      List<String> s = Splitter.on(':').splitToList(slotPin);
       System.setProperty("HSM_PARTITION", "PARTITION_1");
       System.setProperty("HSM_USER", s.get(0));
       System.setProperty("HSM_PASSWORD", s.get(1));
