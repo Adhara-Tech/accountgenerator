@@ -317,7 +317,7 @@ public class HSMCrypto {
     return result;
   }
 
-  // timeToBytes returns the current unix time as a byte array
+  // timeToChars returns the current unix time as a byte array
   private char[] timeToChars() {
     byte[] result = timeToBytes();
     return new String(result, Charset.defaultCharset()).toCharArray();

@@ -222,7 +222,7 @@ subprojects {
           }
           pom {
             name = "AccountGenerator - ${project.name}"
-            url = 'http://github.com/mkrielza/accountgenerator'
+            url = 'http://github.com/AdharaTech/accountgenerator'
             licenses {
               license {
                 name = 'The Apache License, Version 2.0'
@@ -230,9 +230,9 @@ subprojects {
               }
             }
             scm {
-              connection = 'scm:git:git://github.com/spikes/accountgenerator.git'
-              developerConnection = 'scm:git:ssh://github.com/spikes/accountgenerator.git'
-              url = 'https://github.com/spikes/accountgenerator'
+              connection = 'scm:git:git://github.com/AdharaTech/accountgenerator'
+              developerConnection = 'scm:git:ssh://github.com/AdharaTech/accountgenerator'
+              url = 'https://github.com/AdharaTech/accountgenerator'
             }
           }
         }
